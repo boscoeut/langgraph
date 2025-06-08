@@ -6,7 +6,7 @@ import { AgentEditor } from "./components/AgentEditor"
 import { processMessage as chatAgentProcessMessage } from "./lib/langgraph/chatAgent"
 import { processMessage as baseAgentProcessMessage } from "./lib/langgraph/baseAgent"
 import { Allotment } from "allotment"
-import { initializePython } from "./services/pythonService"
+import { initializePython, testPythonOutput } from "./services/pythonService"
 import "allotment/dist/style.css"
 
 interface Message {
@@ -29,6 +29,23 @@ function App() {
       setPythonError('Failed to initialize Python environment. Some features may not work.');
     });
   }, []);
+
+  const handleTestPython = async () => {
+    try {
+      const output = await testPythonOutput();
+      // Add the output as a message
+      const testMessage: Message = {
+        id: Date.now().toString(),
+        content: `Python Test Output:\n${output}`,
+        isUser: false,
+        timestamp: new Date().toLocaleTimeString()
+      };
+      setMessages(prev => [...prev, testMessage]);
+    } catch (error) {
+      console.error("Python test failed:", error);
+      setPythonError("Python test failed. Check console for details.");
+    }
+  };
 
   const handleSendMessage = async (content: string) => {
     // Add user message
@@ -79,10 +96,18 @@ function App() {
       <div className="container mx-auto max-w-6xl h-screen flex flex-col">
         <header className="py-4 border-b flex justify-between items-center">
           <h1 className="text-2xl font-bold text-foreground">LangGraph Chat</h1>
-          <AgentSelector 
-            selectedAgent={selectedAgent}
-            onAgentChange={setSelectedAgent}
-          />
+          <div className="flex items-center gap-4">
+            <button
+              onClick={handleTestPython}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Test Python
+            </button>
+            <AgentSelector 
+              selectedAgent={selectedAgent}
+              onAgentChange={setSelectedAgent}
+            />
+          </div>
         </header>
         
         {pythonError && (

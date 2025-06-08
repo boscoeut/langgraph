@@ -14,18 +14,33 @@ export async function initializePython() {
 export async function execute(code: string): Promise<string> {
   try {
     const pyodide = await initializePython();
-    // await pyodide.loadPackage('numpy');
     let capturedOutput = '';
     
-    pyodide.setStdout((msg: any) => {
-      capturedOutput += msg + '\n';
+    // Set up stdout handler using batched mode
+    pyodide.setStdout({
+      batched: (msg: string) => {
+        console.log('Python stdout:', msg);
+        capturedOutput += msg + '\n';
+      }
     });
-    pyodide.setStderr((msg: any) => {
-      capturedOutput += msg + '\n';
+
+    // Set up stderr handler using batched mode
+    pyodide.setStderr({
+      batched: (msg: string) => {
+        console.error('Python stderr:', msg);
+        capturedOutput += msg + '\n';
+      }
     });
+
+    // Run the Python code
     const result = await pyodide.runPythonAsync(code);
+    
+    // If there's a return value, add it to the output
+    if (result !== undefined) {
+      capturedOutput += String(result);
+    }
+
     console.log('Python execution output:', capturedOutput);
-    console.log('Python execution result:', result);
     return capturedOutput;
   } catch (error) {
     console.error('Python execution error:', error);
@@ -36,4 +51,16 @@ export async function execute(code: string): Promise<string> {
 export async function installPackage(packageName: string) {
   const pyodide = await initializePython();
   await pyodide.loadPackage(packageName);
+}
+
+// Test function to verify Python output capture
+export async function testPythonOutput(): Promise<string> {
+  const testCode = `
+def greet():
+    print("Hello from Python!")
+    return "Greeting completed"
+
+greet()
+`;
+  return execute(testCode);
 } 
