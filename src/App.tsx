@@ -6,7 +6,7 @@ import { AgentEditor } from "./components/AgentEditor"
 import { processMessage as chatAgentProcessMessage } from "./lib/langgraph/chatAgent"
 import { processMessage as baseAgentProcessMessage } from "./lib/langgraph/baseAgent"
 import { Allotment } from "allotment"
-import { initializePython, testPythonOutput } from "./services/pythonService"
+import { executePythonCode } from "./services/pythonSandboxService"
 import "allotment/dist/style.css"
 
 interface Message {
@@ -22,21 +22,15 @@ function App() {
   const [selectedAgent, setSelectedAgent] = useState("chatAgent")
   const [pythonError, setPythonError] = useState<string | null>(null)
 
-  useEffect(() => {
-    // Initialize Python environment
-    initializePython().catch(error => {
-      console.error('Failed to initialize Python:', error);
-      setPythonError('Failed to initialize Python environment. Some features may not work.');
-    });
-  }, []);
-
   const handleTestPython = async () => {
     try {
-      const output = await testPythonOutput();
+      const testCode = `print("Hello from Python!")`;
+      const result = await executePythonCode(testCode);
+      
       // Add the output as a message
       const testMessage: Message = {
         id: Date.now().toString(),
-        content: `Python Test Output:\n${output}`,
+        content: `Python Test Output:\n${result.stdout}\n${result.stderr}`,
         isUser: false,
         timestamp: new Date().toLocaleTimeString()
       };

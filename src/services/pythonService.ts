@@ -14,6 +14,9 @@ export async function initializePython() {
 export async function execute(code: string): Promise<string> {
   try {
     const pyodide = await initializePython();
+    // pyodide.loadPackage('typing');
+    pyodide.loadPackage('typing_extensions');
+    pyodide.loadPackage('langgraph');
     let capturedOutput = '';
     
     // Set up stdout handler using batched mode
