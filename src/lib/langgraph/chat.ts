@@ -2,13 +2,21 @@ import { StringOutputParser } from "@langchain/core/output_parsers";
 import { ChatPromptTemplate } from "@langchain/core/prompts";
 import { RunnableSequence } from "@langchain/core/runnables";
 import { PollinationsLLM } from "./llm";
-import { StateGraph, END } from "@langchain/langgraph";
+import { StateGraph, END, START, Annotation } from "@langchain/langgraph/web";
+import { z } from "zod";
 
-// Define the state interface
-interface ChatState {
-  messages: string[];
-  currentMessage: string;
-}
+// Define the state schema using Zod
+const stateSchema = z.object({
+  messages: z.array(z.object({
+    role: z.enum(["user", "assistant", "system"]),
+    content: z.string()
+  })),
+  currentMessage: z.string(),
+  errors: z.array(z.object({
+    type: z.string(),
+    message: z.string()
+  }))
+});
 
 // Create the LLM instance
 const model = new PollinationsLLM();
@@ -26,42 +34,46 @@ const chain = RunnableSequence.from([
   new StringOutputParser(),
 ]);
 
-// Define the nodes
-const processMessage = async (state: ChatState) => {
-  const result = await chain.invoke({ input: state.currentMessage });
-  return {
-    messages: [...state.messages, state.currentMessage, result],
-    currentMessage: "",
-  };
+// Define the chat node with error handling
+const chatNode = async (state: z.infer<typeof stateSchema>) => {
+  try {
+    const result = await chain.invoke({ input: state.currentMessage });
+    return {
+      messages: [...state.messages, 
+        { role: "user", content: state.currentMessage },
+        { role: "assistant", content: result }
+      ],
+      currentMessage: "",
+      errors: state.errors
+    };
+  } catch (error) {
+    return {
+      messages: state.messages,
+      currentMessage: state.currentMessage,
+      errors: [...state.errors, {
+        type: "CHAT_ERROR",
+        message: error instanceof Error ? error.message : "Unknown error occurred"
+      }]
+    };
+  }
 };
 
 // Create the graph
-const workflow = new StateGraph<ChatState>({
-  channels: {
-    messages: { value: [] },
-    currentMessage: { value: "" },
-  },
-});
-
-// Add nodes
-workflow.addNode("process", processMessage);
-
-// Add edges
-workflow.addEdge("process", END);
-
-// Set the entry point
-workflow.setEntryPoint("process");
-
-// Compile the graph
-const app = workflow.compile();
+const workflow = new StateGraph(stateSchema)
+  .addNode("chat", chatNode)
+  .addEdge(START, "chat")
+  .addEdge("chat", END)
+  .compile();
 
 // Create a function to process messages using the graph
-export async function processChatMessage(message: string) {
+export async function processMessage(message: string) {
   try {
-    const result = await app.invoke({
+    const result = await workflow.invoke({
       messages: [],
       currentMessage: message,
+      errors: []
     });
+    console.log(result);
     return result.messages;
   } catch (error) {
     console.error("Error processing message:", error);

@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { ChatMessage } from "./components/ChatMessage"
 import { ChatInput } from "./components/ChatInput"
+import { processMessage } from "./lib/langgraph/chat"
 
 interface Message {
   id: string
@@ -24,18 +25,31 @@ function App() {
     setMessages(prev => [...prev, userMessage])
     setIsLoading(true)
 
-    // TODO: Add LangGraph integration here
-    // For now, we'll just simulate a response
-    setTimeout(() => {
+    try {
+      // Process the message using LangGraph
+      const response = await processMessage(content)
+      
+      // Add bot message
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: "This is a simulated response. LangGraph integration coming soon!",
+        content: response[response.length - 1]?.content || "Sorry, I couldn't process your message.",
         isUser: false,
         timestamp: new Date().toLocaleTimeString()
       }
       setMessages(prev => [...prev, botMessage])
+    } catch (error) {
+      console.error("Error processing message:", error)
+      // Add error message
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        content: "Sorry, there was an error processing your message.",
+        isUser: false,
+        timestamp: new Date().toLocaleTimeString()
+      }
+      setMessages(prev => [...prev, errorMessage])
+    } finally {
       setIsLoading(false)
-    }, 1000)
+    }
   }
 
   return (
