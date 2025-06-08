@@ -1,8 +1,7 @@
 import { Combobox } from "react-widgets";
 import "react-widgets/styles.css";
-import { useState, useEffect } from "react";
-import Editor, { useMonaco } from "@monaco-editor/react";
-import * as monaco from "monaco-editor";
+import { useState } from "react";
+import { CodeEditor } from "./CodeEditor";
 
 interface AgentEditorProps {
     selectedAgent: string;
@@ -61,84 +60,116 @@ const pythonSnippets = [
     }
 ];
 
+// Helper function to capture console output
+const captureConsoleOutput = () => {
+    const originalConsole = {
+        log: console.log,
+        error: console.error,
+        warn: console.warn,
+        info: console.info
+    };
+
+    const output: string[] = [];
+
+    console.log = (...args) => {
+        output.push(args.map(arg => 
+            typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+        ).join(' '));
+        originalConsole.log.apply(console, args);
+    };
+
+    console.error = (...args) => {
+        output.push(`Error: ${args.map(arg => 
+            typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+        ).join(' ')}`);
+        originalConsole.error.apply(console, args);
+    };
+
+    console.warn = (...args) => {
+        output.push(`Warning: ${args.map(arg => 
+            typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+        ).join(' ')}`);
+        originalConsole.warn.apply(console, args);
+    };
+
+    console.info = (...args) => {
+        output.push(`Info: ${args.map(arg => 
+            typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+        ).join(' ')}`);
+        originalConsole.info.apply(console, args);
+    };
+
+    return {
+        getOutput: () => output,
+        restore: () => {
+            console.log = originalConsole.log;
+            console.error = originalConsole.error;
+            console.warn = originalConsole.warn;
+            console.info = originalConsole.info;
+        }
+    };
+};
+
 export function AgentEditor({ selectedAgent }: AgentEditorProps) {
     const [selectedLanguage, setSelectedLanguage] = useState("typescript");
     const [code, setCode] = useState("");
     const [consoleOutput, setConsoleOutput] = useState<string[]>([]);
-    const [isExecuting, setIsExecuting] = useState(false);
-    const monaco = useMonaco();
 
-    useEffect(() => {
-        if (monaco) {
-            // Register TypeScript snippets
-            monaco.languages.registerCompletionItemProvider("typescript", {
-                provideCompletionItems: (model, position) => {
-                    const word = model.getWordUntilPosition(position);
-                    const range = {
-                        startLineNumber: position.lineNumber,
-                        endLineNumber: position.lineNumber,
-                        startColumn: word.startColumn,
-                        endColumn: word.endColumn
-                    };
-
-                    return {
-                        suggestions: typescriptSnippets.map(snippet => ({
-                            label: snippet.label,
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: snippet.insertText,
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: snippet.documentation,
-                            range
-                        }))
-                    };
+    const executeTypeScript = async (code: string) => {
+        const consoleCapture = captureConsoleOutput();
+        try {
+            // Create a safe execution environment
+            const safeEval = new Function('console', `
+                try {
+                    ${code}
+                } catch (error) {
+                    console.error(error);
                 }
-            });
-
-            // Register Python snippets
-            monaco.languages.registerCompletionItemProvider("python", {
-                provideCompletionItems: (model, position) => {
-                    const word = model.getWordUntilPosition(position);
-                    const range = {
-                        startLineNumber: position.lineNumber,
-                        endLineNumber: position.lineNumber,
-                        startColumn: word.startColumn,
-                        endColumn: word.endColumn
-                    };
-
-                    return {
-                        suggestions: pythonSnippets.map(snippet => ({
-                            label: snippet.label,
-                            kind: monaco.languages.CompletionItemKind.Snippet,
-                            insertText: snippet.insertText,
-                            insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                            documentation: snippet.documentation,
-                            range
-                        }))
-                    };
-                }
-            });
-        }
-    }, [monaco]);
-
-    const handleEditorChange = (value: string | undefined) => {
-        if (value !== undefined) {
-            setCode(value);
+            `);
+            
+            safeEval(console);
+            return consoleCapture.getOutput();
+        } catch (error) {
+            return [`Error: ${error instanceof Error ? error.message : String(error)}`];
+        } finally {
+            consoleCapture.restore();
         }
     };
 
-    const handleExecute = async () => {
-        setIsExecuting(true);
+    const executePython = async (code: string) => {
+        try {
+            // For Python, we'll need to send the code to a backend service
+            // This is a placeholder for the actual implementation
+            const response = await fetch('/api/execute-python', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ code }),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to execute Python code');
+            }
+
+            const result = await response.json();
+            return result.output;
+        } catch (error) {
+            return [`Error: ${error instanceof Error ? error.message : String(error)}`];
+        }
+    };
+
+    const handleExecute = async (code: string) => {
         setConsoleOutput(prev => [...prev, `> Executing ${selectedLanguage} code...`]);
         
         try {
-            // TODO: Implement actual code execution
-            // For now, just simulate execution
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            setConsoleOutput(prev => [...prev, "Code executed successfully"]);
+            const output = selectedLanguage === 'typescript' 
+                ? await executeTypeScript(code)
+                : await executePython(code);
+            
+            setConsoleOutput(prev => [...prev, ...output]);
         } catch (error) {
             setConsoleOutput(prev => [...prev, `Error: ${error instanceof Error ? error.message : String(error)}`]);
-        } finally {
-            setIsExecuting(false);
         }
     };
 
@@ -158,37 +189,13 @@ export function AgentEditor({ selectedAgent }: AgentEditorProps) {
                         onChange={(value) => setSelectedLanguage(typeof value === 'string' ? value : value.id)}
                         className="w-48"
                     />
-                    <button
-                        onClick={handleExecute}
-                        disabled={isExecuting}
-                        className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        {isExecuting ? "Executing..." : "Execute"}
-                    </button>
                 </div>
-                <div className="flex-1 h-[calc(100vh-400px)]">
-                    <Editor
-                        height="100%"
-                        defaultLanguage={selectedLanguage}
-                        language={selectedLanguage}
-                        value={code}
-                        onChange={handleEditorChange}
-                        theme="vs-dark"
-                        options={{
-                            minimap: { enabled: false },
-                            fontSize: 14,
-                            lineNumbers: "on",
-                            roundedSelection: false,
-                            scrollBeyondLastLine: false,
-                            automaticLayout: true,
-                            tabSize: 2,
-                            wordWrap: "on",
-                            suggestOnTriggerCharacters: true,
-                            quickSuggestions: true,
-                            acceptSuggestionOnEnter: "on"
-                        }}
-                    />
-                </div>
+                <CodeEditor
+                    language={selectedLanguage}
+                    value={code}
+                    onChange={setCode}
+                    onExecute={handleExecute}
+                />
                 <div className="mt-4 h-[200px] bg-gray-900 rounded-lg overflow-hidden flex flex-col">
                     <div className="flex justify-between items-center px-4 py-2 bg-gray-800 border-b border-gray-700">
                         <h3 className="text-sm font-medium text-gray-200">Console</h3>
