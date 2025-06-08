@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ChatMessage } from "./components/ChatMessage"
 import { ChatInput } from "./components/ChatInput"
 import { AgentSelector } from "./components/AgentSelector"
@@ -6,6 +6,7 @@ import { AgentEditor } from "./components/AgentEditor"
 import { processMessage as chatAgentProcessMessage } from "./lib/langgraph/chatAgent"
 import { processMessage as baseAgentProcessMessage } from "./lib/langgraph/baseAgent"
 import { Allotment } from "allotment"
+import { initializePython } from "./services/pythonService"
 import "allotment/dist/style.css"
 
 interface Message {
@@ -19,6 +20,15 @@ function App() {
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [selectedAgent, setSelectedAgent] = useState("chatAgent")
+  const [pythonError, setPythonError] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Initialize Python environment
+    initializePython().catch(error => {
+      console.error('Failed to initialize Python:', error);
+      setPythonError('Failed to initialize Python environment. Some features may not work.');
+    });
+  }, []);
 
   const handleSendMessage = async (content: string) => {
     // Add user message
@@ -74,6 +84,13 @@ function App() {
             onAgentChange={setSelectedAgent}
           />
         </header>
+        
+        {pythonError && (
+          <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4" role="alert">
+            <p className="font-bold">Warning</p>
+            <p>{pythonError}</p>
+          </div>
+        )}
         
         <div className="flex-1">
           <Allotment>

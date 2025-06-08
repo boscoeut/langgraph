@@ -124,8 +124,12 @@ export function AgentEditor({ selectedAgent }: AgentEditorProps) {
             const output = selectedLanguage === 'typescript' 
                 ? await executeTypeScript(code)
                 : await executePython(code);
-            
-            setConsoleOutput(prev => [...prev, ...output]);
+            // how to tell if the output is a string or an array?
+            if (typeof output === 'string') {
+                setConsoleOutput(prev => [...prev, output]);
+            } else {
+                setConsoleOutput(prev => [...prev, ...output]);
+            }
         } catch (error) {
             setConsoleOutput(prev => [...prev, `Error: ${error instanceof Error ? error.message : String(error)}`]);
         }

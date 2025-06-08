@@ -9,23 +9,32 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     resolve: {
       alias: {
-        "@": path.resolve(__dirname, "./src"),
+        src: path.resolve(__dirname, './src'),
       },
     },
     define: {
       'process.env.VITE_OPENAI_API_KEY': JSON.stringify(env.VITE_OPENAI_API_KEY),
     },
     optimizeDeps: {
-      exclude: [
-        'codemirror',
-        '@codemirror/commands',
-        '@codemirror/language',
-        '@codemirror/state',
-        '@codemirror/view',
-        '@codemirror/lang-javascript',
-        '@codemirror/lang-python',
-        '@lezer/highlight'
-      ]
-    }
+      exclude: ['pyodide'],
+    },
+    server: {
+      headers: {
+        'Cross-Origin-Opener-Policy': 'same-origin',
+        'Cross-Origin-Embedder-Policy': 'require-corp',
+      },
+      fs: {
+        strict: false,
+        allow: ['..'],
+      },
+    },
+    build: {
+      rollupOptions: {
+        input: {
+          main: 'index.html',
+        },
+      },
+      assetsInlineLimit: 0, // Disable asset inlining for Pyodide files
+    },
   }
 })
