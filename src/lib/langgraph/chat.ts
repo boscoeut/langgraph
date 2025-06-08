@@ -15,7 +15,6 @@ const stateSchema = z.object({
   searchResult: z.string()
 });
 
-
 // Define the chat node with error handling
 const chatNode = async (state: z.infer<typeof stateSchema>) => {
   try {
