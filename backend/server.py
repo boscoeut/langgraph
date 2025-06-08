@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import uvicorn
+import textwrap
 
 app = FastAPI()
 
@@ -41,22 +42,7 @@ def set_resource_limits():
 
 def create_sandbox_script(code: str) -> str:
     """Create a temporary Python script with the sandboxed code."""
-    script = f"""
-import sys
-import resource
-import traceback
-
-def set_limits():
-    resource.setrlimit(resource.RLIMIT_AS, ({MEMORY_LIMIT}, {MEMORY_LIMIT}))
-    resource.setrlimit(resource.RLIMIT_CPU, ({CPU_TIME_LIMIT}, {CPU_TIME_LIMIT}))
-    resource.setrlimit(resource.RLIMIT_FSIZE, ({WRITE_LIMIT}, {WRITE_LIMIT}))
-
-try:
-    {code}
-except Exception as e:
-    print(f"Error: {{str(e)}}", file=sys.stderr)
-    traceback.print_exc(file=sys.stderr)
-"""
+    script = code
     return script
 
 @app.post("/execute")

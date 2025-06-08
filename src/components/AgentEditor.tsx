@@ -121,12 +121,16 @@ export function AgentEditor({ selectedAgent }: AgentEditorProps) {
         setConsoleOutput(prev => [...prev, `> Executing ${selectedLanguage} code...`]);
         
         try {
-            const output = selectedLanguage === 'typescript' 
+            const output:any = selectedLanguage === 'typescript' 
                 ? await executeTypeScript(code)
                 : await executePython(code);
             // how to tell if the output is a string or an array?
             if (typeof output === 'string') {
                 setConsoleOutput(prev => [...prev, output]);
+            } else if (output.stdout) {
+                setConsoleOutput(prev => [...prev, output.stdout]);
+            } else if (output.stderr) {
+                setConsoleOutput(prev => [...prev, output.stderr]);
             } else {
                 setConsoleOutput(prev => [...prev, ...output]);
             }
