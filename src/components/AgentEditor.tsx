@@ -2,6 +2,8 @@ import { Combobox } from "react-widgets";
 import "react-widgets/styles.css";
 import { useState } from "react";
 import { CodeEditor } from "./CodeEditor";
+import { executeTypeScript } from "../lib/execution/typescript";
+import { executePython } from "../lib/execution/python";
 
 interface AgentEditorProps {
     selectedAgent: string;
@@ -114,50 +116,6 @@ export function AgentEditor({ selectedAgent }: AgentEditorProps) {
     const [selectedLanguage, setSelectedLanguage] = useState("typescript");
     const [code, setCode] = useState("");
     const [consoleOutput, setConsoleOutput] = useState<string[]>([]);
-
-    const executeTypeScript = async (code: string) => {
-        const consoleCapture = captureConsoleOutput();
-        try {
-            // Create a safe execution environment
-            const safeEval = new Function('console', `
-                try {
-                    ${code}
-                } catch (error) {
-                    console.error(error);
-                }
-            `);
-            
-            safeEval(console);
-            return consoleCapture.getOutput();
-        } catch (error) {
-            return [`Error: ${error instanceof Error ? error.message : String(error)}`];
-        } finally {
-            consoleCapture.restore();
-        }
-    };
-
-    const executePython = async (code: string) => {
-        try {
-            // For Python, we'll need to send the code to a backend service
-            // This is a placeholder for the actual implementation
-            const response = await fetch('/api/execute-python', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ code }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to execute Python code');
-            }
-
-            const result = await response.json();
-            return result.output;
-        } catch (error) {
-            return [`Error: ${error instanceof Error ? error.message : String(error)}`];
-        }
-    };
 
     const handleExecute = async (code: string) => {
         setConsoleOutput(prev => [...prev, `> Executing ${selectedLanguage} code...`]);
