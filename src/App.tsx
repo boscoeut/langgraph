@@ -1,7 +1,9 @@
 import { useState } from "react"
 import { ChatMessage } from "./components/ChatMessage"
 import { ChatInput } from "./components/ChatInput"
-import { processMessage } from "./lib/langgraph/chat"
+import { AgentSelector } from "./components/AgentSelector"
+import { processMessage as chatAgentProcessMessage } from "./lib/langgraph/chatAgent"
+import { processMessage as baseAgentProcessMessage } from "./lib/langgraph/baseAgent"
 
 interface Message {
   id: string
@@ -13,6 +15,7 @@ interface Message {
 function App() {
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [selectedAgent, setSelectedAgent] = useState("chatAgent")
 
   const handleSendMessage = async (content: string) => {
     // Add user message
@@ -27,7 +30,13 @@ function App() {
 
     try {
       // Process the message using LangGraph
-      const response = await processMessage(content)
+      let response: any
+      console.log("selectedAgent", selectedAgent)
+      if (selectedAgent === "chatAgent") {
+        response = await chatAgentProcessMessage(content)
+      } else {
+        response = await baseAgentProcessMessage(content)
+      }
       
       // Add bot message
       const botMessage: Message = {
@@ -55,8 +64,12 @@ function App() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto max-w-4xl h-screen flex flex-col">
-        <header className="py-4 border-b">
+        <header className="py-4 border-b flex justify-between items-center">
           <h1 className="text-2xl font-bold text-foreground">LangGraph Chat</h1>
+          <AgentSelector 
+            selectedAgent={selectedAgent}
+            onAgentChange={setSelectedAgent}
+          />
         </header>
         
         <div className="flex-1 overflow-y-auto p-4">
