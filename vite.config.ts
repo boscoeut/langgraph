@@ -15,5 +15,17 @@ export default defineConfig(({ mode }) => {
     define: {
       'process.env.VITE_OPENAI_API_KEY': JSON.stringify(env.VITE_OPENAI_API_KEY),
     },
+    optimizeDeps: {
+      exclude: [
+        'codemirror',
+        '@codemirror/commands',
+        '@codemirror/language',
+        '@codemirror/state',
+        '@codemirror/view',
+        '@codemirror/lang-javascript',
+        '@codemirror/lang-python',
+        '@lezer/highlight'
+      ]
+    }
   }
 })

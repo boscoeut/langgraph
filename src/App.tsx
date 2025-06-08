@@ -2,8 +2,11 @@ import { useState } from "react"
 import { ChatMessage } from "./components/ChatMessage"
 import { ChatInput } from "./components/ChatInput"
 import { AgentSelector } from "./components/AgentSelector"
+import { AgentEditor } from "./components/AgentEditor"
 import { processMessage as chatAgentProcessMessage } from "./lib/langgraph/chatAgent"
 import { processMessage as baseAgentProcessMessage } from "./lib/langgraph/baseAgent"
+import { Allotment } from "allotment"
+import "allotment/dist/style.css"
 
 interface Message {
   id: string
@@ -63,7 +66,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto max-w-4xl h-screen flex flex-col">
+      <div className="container mx-auto max-w-6xl h-screen flex flex-col">
         <header className="py-4 border-b flex justify-between items-center">
           <h1 className="text-2xl font-bold text-foreground">LangGraph Chat</h1>
           <AgentSelector 
@@ -72,21 +75,31 @@ function App() {
           />
         </header>
         
-        <div className="flex-1 overflow-y-auto p-4">
-          {messages.map((message) => (
-            <ChatMessage
-              key={message.id}
-              message={message.content}
-              isUser={message.isUser}
-              timestamp={message.timestamp}
-            />
-          ))}
+        <div className="flex-1">
+          <Allotment>
+            <Allotment.Pane minSize={300}>
+              <div className="h-full flex flex-col">
+                <div className="flex-1 overflow-y-auto p-4">
+                  {messages.map((message) => (
+                    <ChatMessage
+                      key={message.id}
+                      message={message.content}
+                      isUser={message.isUser}
+                      timestamp={message.timestamp}
+                    />
+                  ))}
+                </div>
+                <ChatInput
+                  onSendMessage={handleSendMessage}
+                  disabled={isLoading}
+                />
+              </div>
+            </Allotment.Pane>
+            <Allotment.Pane minSize={300}>
+              <AgentEditor selectedAgent={selectedAgent} />
+            </Allotment.Pane>
+          </Allotment>
         </div>
-
-        <ChatInput
-          onSendMessage={handleSendMessage}
-          disabled={isLoading}
-        />
       </div>
     </div>
   )
